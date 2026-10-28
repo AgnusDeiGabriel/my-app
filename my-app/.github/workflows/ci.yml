@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Enstale depandans yo
+        run: pip install -r requirements.txt
+
+      - name: Teste API a
+        run: |
+          python - <<'EOF'
+          from app import app
+          c = app.test_client()
+          assert c.get("/").status_code == 200
+          t = c.post("/api/tasks", json={"text": "tès"}).get_json()
+          assert c.put(f"/api/tasks/{t['id']}", json={"done": True}).get_json()["done"]
+          assert c.delete(f"/api/tasks/{t['id']}").status_code == 200
+          print("Tout tès yo pase")
+          EOF
