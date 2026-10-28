@@ -3,17 +3,24 @@ const input = document.getElementById("input");
 const list = document.getElementById("list");
 const count = document.getElementById("count");
 
-async function api(method, url, body) {
-  const res = await fetch(url, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  return res.json();
+const STORAGE_KEY = "lis-travay";
+
+function loadTasks() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  } catch {
+    return [];
+  }
 }
 
-function render(tasks) {
+function saveTasks(tasks) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+}
+
+function render() {
+  const tasks = loadTasks();
   list.innerHTML = "";
+
   for (const task of tasks) {
     const li = document.createElement("li");
     li.className = task.done ? "done" : "";
@@ -21,9 +28,13 @@ function render(tasks) {
     const check = document.createElement("input");
     check.type = "checkbox";
     check.checked = task.done;
-    check.onchange = async () => {
-      await api("PUT", `/api/tasks/${task.id}`, { done: check.checked });
-      load();
+
+    check.onchange = () => {
+      const updated = loadTasks().map(t =>
+        t.id === task.id ? { ...t, done: check.checked } : t
+      );
+      saveTasks(updated);
+      render();
     };
 
     const text = document.createElement("span");
@@ -33,31 +44,40 @@ function render(tasks) {
     del.className = "delete";
     del.title = "Efase";
     del.textContent = "✕";
-    del.onclick = async () => {
-      await api("DELETE", `/api/tasks/${task.id}`);
-      load();
+
+    del.onclick = () => {
+      saveTasks(loadTasks().filter(t => t.id !== task.id));
+      render();
     };
 
     li.append(check, text, del);
     list.append(li);
   }
-  const left = tasks.filter((t) => !t.done).length;
+
+  const left = tasks.filter(t => !t.done).length;
+
   count.textContent = tasks.length
     ? `${left} travay ki rete sou ${tasks.length}`
     : "Pa gen travay ankò. Ajoute youn!";
 }
 
-async function load() {
-  render(await api("GET", "/api/tasks"));
-}
-
-form.onsubmit = async (e) => {
+form.onsubmit = (e) => {
   e.preventDefault();
+
   const text = input.value.trim();
   if (!text) return;
-  await api("POST", "/api/tasks", { text });
+
+  const tasks = loadTasks();
+
+  tasks.push({
+    id: Date.now(),
+    text,
+    done: false
+  });
+
+  saveTasks(tasks);
   input.value = "";
-  load();
+  render();
 };
 
-load();
+render();
